@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Definitive Interactive Prompt Library for Flask & AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Source+Code+Pro:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #1e40af;
+            --secondary-color: #3b82f6;
+            --light-bg: #f1f5f9;
+            --card-bg: #ffffff;
+            --text-dark: #1e293b;
+            --text-light: #475569;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--light-bg);
+        }
+        .prompt-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+        }
+        .prompt-header {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .prompt-title {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--primary-color);
+        }
+        .prompt-content {
+            display: none;
+            padding: 1.5rem;
+            border-top: 1px solid #e5e7eb;
+        }
+        .prompt-code-container {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 8px;
+            font-family: 'Source Code Pro', monospace;
+            position: relative;
+        }
+        .prompt-code-container textarea {
+            background: transparent;
+            border: none;
+            color: inherit;
+            width: 100%;
+            height: 200px;
+            resize: vertical;
+            font-family: inherit;
+            font-size: 0.9rem;
+        }
+        .prompt-code-container textarea:focus {
+            outline: none;
+            box-shadow: none;
+        }
+        .prompt-category h2 {
+            font-size: 2rem;
+            font-weight: 800;
+            color: #1e3a8a;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 4px solid var(--secondary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .control-btn {
+            background-color: #e2e8f0;
+            color: #475569;
+            border: none;
+            padding: 0.3rem 0.6rem;
+            border-radius: 6px;
+            font-size: 1.2rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .control-btn:hover {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        .copy-btn {
+            position: absolute; top: 0.75rem; right: 0.75rem;
+            background-color: #334155; color: #cbd5e1;
+            border: none; padding: 0.35rem 0.6rem;
+            border-radius: 6px; font-size: 0.8rem;
+            cursor: pointer; transition: all 0.2s;
+        }
+        .copy-btn:hover { background-color: var(--secondary-color); color: white; }
+        .pro-tip {
+            background-color: #eef2ff; border-left: 4px solid var(--secondary-color);
+            padding: 1rem; margin-top: 1.5rem; font-size: 0.9rem; color: #312e81;
+        }
+        .chevron { transition: transform 0.3s; }
+        .prompt-card.open .chevron { transform: rotate(180deg); }
+        .input-group label {
+            display: block; font-weight: 600; margin-bottom: 0.5rem; color: #374151;
+        }
+        .input-group input, .input-group textarea, .input-group select {
+            width: 100%; padding: 0.75rem; border: 1px solid #d1d5db;
+            border-radius: 8px; transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus {
+            outline: none; border-color: var(--secondary-color);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        .action-button {
+            padding: 0.75rem 1.5rem; border-radius: 8px;
+            font-weight: 600; cursor: pointer; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 0.5rem;
+        }
+        .btn-primary { background-color: var(--primary-color); color: white; }
+        .btn-primary:hover { background-color: #1c3594; transform: translateY(-1px); }
+        .loading-spinner {
+            border: 4px solid #f3f3f3; border-top: 4px solid var(--secondary-color);
+            border-radius: 50%; width: 30px; height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <header class="bg-gradient-to-r from-blue-900 via-blue-700 to-indigo-800 text-white sticky top-0 z-50 shadow-lg">
+        <div class="container mx-auto px-6 py-4">
+            <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+                <div>
+                    <h1 class="text-3xl lg:text-4xl font-extrabold">Interactive AI Prompt Library</h1>
+                    <p class="text-md text-blue-200">Your Dynamic Co-pilot for Flask Development</p>
+                </div>
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <input type="search" id="search-bar" placeholder="🔍 Search prompts..." class="w-full md:w-64 px-4 py-2 rounded-lg bg-blue-900/50 border border-blue-500 placeholder-blue-300 text-white focus:outline-none focus:ring-2 focus:ring-blue-400">
+                    <button id="add-section-btn" class="action-button bg-green-500 hover:bg-green-600 text-white whitespace-nowrap">
+                        <span class="text-xl">+</span> Add Section
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container mx-auto px-6 py-10">
+        <div class="grid lg:grid-cols-12 gap-8">
+            <aside class="lg:col-span-3">
+                <div class="sticky top-28 bg-white p-6 rounded-xl shadow-md">
+                    <h3 class="text-xl font-bold mb-4 text-gray-800">Navigation</h3>
+                    <ul class="space-y-3" id="category-nav">
+                        <!-- Navigation items will be dynamically inserted here -->
+                    </ul>
+                </div>
+            </aside>
+            
+            <main class="lg:col-span-9" id="main-content">
+                <!-- Prompt categories will be dynamically inserted here -->
+                 <p id="no-results" class="hidden text-center text-gray-500 mt-10">No prompts found matching your search.</p>
+            </main>
+        </div>
+    </div>
+
+    <script>
+    const masterInstruction = `Always respond using your most advanced and capable reasoning model. Prioritize deep analysis, logical clarity, and high factual accuracy. Structure responses in clear steps or sections. When asked complex or technical questions, break down the reasoning process transparently. Use advanced understanding to handle ambiguous or nuanced prompts. If unsure, clearly explain the uncertainty or assumptions involved. Respond like a domain expert would, but still remain clear and accessible.`;
+    
+    // Single source of truth for the entire library state
+    let promptsData = {
+        setup: {
+            name: "1. Project Setup & Architecture",
+            prompts: [
+                {
+                    title: "Generate Initial Flask Project Structure",
+                    basePrompt: `Act as an expert software architect. Your task is to generate a modern, scalable project structure for a new Flask application named '[appName]'.\n\n**Analysis & Reasoning:**\nA scalable structure should separate concerns clearly. I recommend using the Application Factory pattern with Blueprints. This allows for modular components, easier testing, and clear organization as the application grows.\n\n**Response Structure:**\n1.  Provide a visual tree structure of the recommended directories and key files.\n2.  Generate the boilerplate code for the essential files: \`run.py\`, \`config.py\`, and the application factory in \`app/__init__.py\`.\n3.  Explain the precise purpose of each directory and file in the structure.\n\n**Project Details:**\n- **Application Name:** [appName]\n- **Database:** MySQL with Flask-SQLAlchemy\n- **Frontend Framework:** SB-Admin2 Bootstrap 4`,
+                    inputs: [ { id: 'appName', label: 'Application Name', placeholder: 'e.g., flaskDatamile' } ],
+                    tip: "A solid project structure is the most critical first step. This ensures a best-practice setup from day one."
+                },
+                {
+                    title: "Create requirements.txt",
+                    basePrompt: `Act as a senior Python developer. Your task is to generate a comprehensive 'requirements.txt' file for a medium-scale Flask application.\n\n**Analysis & Reasoning:**\nA good requirements file should include libraries for the web framework, database interaction, migrations, forms, authentication, environment management, and production deployment.\n\n**Response Structure:**\nGenerate a complete \`requirements.txt\` file. For each library, include an inline comment explaining its specific role in the application.\n\n**Core Libraries to Include:**\n- Flask\n- Flask-SQLAlchemy\n- Flask-Migrate\n- Flask-WTF\n- Flask-Login\n- PyMySQL (for MySQL connection)\n- python-dotenv (for environment variables)\n- Gunicorn (for production WSGI server)`,
+                    inputs: [],
+                    tip: "Ensures a reproducible environment for you and any other developers who work on the project."
+                }
+            ]
+        },
+        database: {
+            name: "2. Database & Models",
+            prompts: [
+                {
+                    title: "Design Database Schema & Models",
+                    basePrompt: `Act as an expert database architect. Your task is to design a normalized MySQL database schema and generate the corresponding Flask-SQLAlchemy models.\n\n**Analysis & Reasoning:**\nBased on the user's requirements, I will design tables with appropriate data types, primary keys, foreign keys, and indexes to ensure data integrity and query performance. I will use standard naming conventions.\n\n**Response Structure:**\n1.  Provide the SQL \`CREATE TABLE\` statements for all required tables.\n2.  Provide the complete Python code for the corresponding \`models.py\` file, including model classes and relationships.\n\n**Application Requirements:**\n[appRequirements]\n\n**Attached File Context:**\n[attachedFileContext]`,
+                    inputs: [
+                        { id: 'appRequirements', label: 'Describe your application and its data needs', type: 'textarea', placeholder: 'e.g., A manufacturing system that tracks sales orders, parts (BOM), materials required...' },
+                        { id: 'schemaFile', label: 'Attach existing schema or related file (optional)', type: 'file' }
+                    ],
+                    tip: "Be detailed in your requirements. Attaching an existing SQL file or model definition provides excellent context."
+                },
+                {
+                    title: "Optimize a MySQL Query",
+                    basePrompt: `Act as a MySQL performance tuning expert. Your task is to analyze and optimize the following SQL query for a Flask application.\n\n**Analysis & Reasoning:**\nI will analyze the query for potential performance bottlenecks such as missing indexes, inefficient joins, or full table scans. I will check the EXPLAIN plan logic to suggest improvements.\n\n**Response Structure:**\n1.  **Critique:** Provide a brief critique of the original query's potential issues.\n2.  **Recommendation:** Suggest which table columns should have indexes to support this query.\n3.  **Optimized Query:** Provide the rewritten, optimized SQL query.\n4.  **Explanation:** Explain why the new query and indexes are more performant.\n\n**Original Query:**\n[originalQuery]\n\n**Relevant Schema (if available):**\n[attachedFileContext]`,
+                    inputs: [
+                        { id: 'originalQuery', label: 'Paste the slow SQL query here', type: 'textarea', placeholder: 'SELECT * FROM sales_orders JOIN customers ON ...' },
+                        { id: 'querySchemaFile', label: 'Attach relevant CREATE TABLE file (optional)', type: 'file' }
+                    ],
+                    tip: "Provide the `CREATE TABLE` statements for the tables involved to get the most accurate optimization advice."
+                }
+            ]
+        },
+        development: {
+            name: "3. Feature Development & Replication",
+            prompts: [
+                {
+                    title: "Create a New Page (Backend + Frontend)",
+                    basePrompt: `Act as a full-stack developer. Your task is to generate all necessary code to add a new page to a Flask application.\n\n**Analysis & Reasoning:**\nCreating a new page involves three main steps: defining the backend route, creating the database query, and building the frontend template. I will follow RESTful principles and ensure clean separation of concerns.\n\n**Response Structure:**\n1.  **Flask Route:** Provide the Python code for the new route in the appropriate blueprint.\n2.  **Jinja2 Template:** Provide the complete HTML for the template, extending 'base.html' and using Bootstrap 4.\n3.  **Explanation:** Briefly explain how the route and template work together.\n\n**Page Details:**\n- **Page URL:** [pageUrl]\n- **Blueprint Name:** [blueprintName]\n- **Purpose & Data:** [pagePurpose]\n- **Template Name:** [templateName]`,
+                    inputs: [
+                        { id: 'pageUrl', label: 'URL for the new page', placeholder: 'e.g., /reports/monthly' },
+                        { id: 'blueprintName', label: 'Blueprint Name', placeholder: 'e.g., main' },
+                        { id: 'pagePurpose', label: 'What should this page do?', type: 'textarea', placeholder: 'e.g., Display a paginated table of all sales orders.' },
+                        { id: 'templateName', label: 'Template Filename', placeholder: 'e.g., reports/monthly.html' }
+                    ],
+                    tip: "This prompt scaffolds an entire feature, giving you the backend logic and frontend template in one go."
+                },
+                 {
+                    title: "Extend an Existing Feature",
+                    basePrompt: `Act as a senior software engineer. Your task is to extend an existing feature in my Flask application by adding new functionality. I will provide the existing code for context.\n\n**Analysis & Reasoning:**\nI will analyze the existing code to understand its structure and logic. I will then identify the best places to add the new functionality while maintaining code quality and adhering to existing patterns.\n\n**Response Structure:**\n1.  **Code Changes:** Provide the specific code modifications or additions needed in the Python route and the Jinja2 template.\n2.  **New Functions (if any):** If new helper functions or database queries are needed, provide them.\n3.  **Explanation:** Clearly explain the changes and how they integrate with the existing feature.\n\n**Feature to Extend:**\n[featureDescription]\n\n**New Functionality to Add:**\n[newFunctionality]\n\n**Attached File Context (Existing Code):**\n[attachedFileContext]`,
+                    inputs: [
+                        { id: 'featureDescription', label: 'Which feature are you extending?', placeholder: 'e.g., The sales order details page.' },
+                        { id: 'newFunctionality', label: 'What new functionality do you want to add?', type: 'textarea', placeholder: 'e.g., Add a button to export the order details as a CSV file.' },
+                        { id: 'featureFile', label: 'Attach the existing route/template file', type: 'file' }
+                    ],
+                    tip: "Attaching the relevant Python route file and/or HTML template is crucial for getting accurate, context-aware code modifications."
+                },
+                {
+                    title: "Replicate UI/UX from an Example",
+                    basePrompt: `Act as an expert frontend developer specializing in UI/UX replication. Your task is to analyze the provided example and generate the HTML and CSS code to replicate its layout and style within my Flask + SB-Admin2 project.\n\n**Analysis & Reasoning:**\nI will analyze the layout structure, color schemes, typography, and component styling of the example. I will then translate this into a clean, responsive HTML structure using Bootstrap 4 utility classes, consistent with the SB-Admin2 theme.\n\n**Response Structure:**\n1.  **HTML Structure:** Provide the complete HTML structure for the new page, using Jinja2 template inheritance.\n2.  **Custom CSS (if needed):** If SB-Admin2 cannot replicate a style, provide the minimal custom CSS required.\n3.  **JavaScript (if needed):** Provide any vanilla JS needed for interactivity.\n\n**Replication Details:**\n- **Example Source:** [exampleSource]\n- **Attached File Context (Screenshot/HTML):**\n[attachedFileContext]`,
+                    inputs: [
+                        { id: 'exampleSource', label: 'URL or description of the example to replicate', placeholder: 'e.g., The dashboard from metabase.com' },
+                        { id: 'uiFile', label: 'Attach screenshot or HTML of the example', type: 'file' }
+                    ],
+                    tip: "Providing a screenshot or the raw HTML of the page you want to replicate will give the AI precise context for a much more accurate result."
+                },
+                {
+                    title: "Manipulate a Database Table Column",
+                    basePrompt: `Act as a senior DBA and Flask developer. Your task is to generate the code and commands to [action] a column in my application's database and update the associated code.\n\n**Analysis & Reasoning:**\nThis operation requires three steps: updating the data model, generating a database migration script, and updating the frontend templates. This ensures consistency across the entire application stack.\n\n**Response Structure:**\n1.  **Model Update:** Provide the updated Python code for the SQLAlchemy model.\n2.  **Migration Command:** Provide the exact \`flask db migrate\` and \`flask db upgrade\` commands.\n3.  **Template Update:** Provide the updated Jinja2/HTML code for the template that displays this table, showing the column being [actionPastTense].\n\n**Manipulation Details:**\n- **Action:** [action]\n- **Table/Model Name:** [tableName]\n- **Column Name:** [columnName]\n- **Column Data Type (if adding):** [columnType]\n- **Template File:** [templateFile]`,
+                    inputs: [
+                        { id: 'action', label: 'Action', type: 'select', options: ['Add', 'Remove'] },
+                        { id: 'tableName', label: 'Table / Model Name', placeholder: 'e.g., SalesOrder' },
+                        { id: 'columnName', label: 'Column Name', placeholder: 'e.g., tracking_number' },
+                        { id: 'columnType', label: 'Column DataType (for Add only)', placeholder: 'e.g., db.String(100)' },
+                        { id: 'templateFile', label: 'Relevant Template File', placeholder: 'e.g., sales_orders.html' }
+                    ],
+                    tip: "Modifying database schemas can be risky. This prompt ensures you handle all three critical layers: the model, the migration, and the template."
+                }
+            ]
+        },
+        refactoring: {
+            name: "4. Code Analysis & Refactoring",
+             prompts: [
+                 {
+                    title: "Explain Existing Code",
+                    basePrompt: `Act as a principal software engineer conducting a code review. Your task is to provide a clear and detailed explanation of the attached Python/Flask code file.\n\n**Analysis & Reasoning:**\nI will analyze the code's structure, logic, and dependencies. My explanation will cover the overall purpose of the code, break down the functionality of each major function or class, and highlight any complex or important logic.\n\n**Response Structure:**\n1.  **High-Level Summary:** A one-paragraph summary of the file's purpose.\n2.  **Key Components:** A breakdown of each class and/or function, explaining what it does.\n3.  **Data Flow:** An explanation of how data flows through the code (e.g., from request to database to response).\n4.  **Potential Improvements:** Suggest 1-2 potential areas for improvement regarding clarity, performance, or security.\n\n**Attached Code File to Analyze:**\n[attachedFileContext]`,
+                    inputs: [
+                        { id: 'explainFile', label: 'Attach code file to explain', type: 'file' }
+                    ],
+                    tip: "Incredibly useful for understanding legacy code or code written by another developer before you start making changes."
+                },
+                {
+                    title: "Refactor a Large Function",
+                    basePrompt: `Act as an expert software engineer specializing in code maintainability. Your task is to refactor the provided Python function, which has become too long and complex.\n\n**Analysis & Reasoning:**\nI will apply the Single Responsibility Principle to break the large function down into smaller, more focused helper functions. This improves readability, makes the code easier to test, and reduces complexity.\n\n**Response Structure:**\n1.  **Refactored Code:** Provide the complete, refactored code, including the new helper functions and the simplified original function.\n2.  **Explanation of Changes:** Use a clear list or table to show which parts of the original function were extracted into which new helper functions.\n3.  **Benefits:** Briefly explain how this refactoring improves the overall quality of the code.\n\n**Function to Refactor:**\n[attachedFileContext]`,
+                    inputs: [
+                        { id: 'refactorFile', label: 'Attach Python file containing the function', type: 'file' }
+                    ],
+                    tip: "Provide the actual code you want to improve. The AI can act as an expert code reviewer, breaking down complexity into manageable pieces."
+                },
+                {
+                    title: "Add Docstrings and Type Hinting",
+                    basePrompt: `Act as a senior developer with a focus on code quality and documentation. Your task is to add professional-quality Google-style docstrings and Python type hints to all functions and methods in the attached file.\n\n**Analysis & Reasoning:**\nProper documentation and type hinting are essential for long-term maintainability and collaboration. I will analyze each function to understand its inputs, outputs, and side effects to generate accurate and helpful documentation.\n\n**Response Structure:**\nReturn the complete code from the attached file, but with Google-style docstrings and full type hinting added to every function definition and method.\n\n**Code to Document:**\n[attachedFileContext]`,
+                    inputs: [
+                        { id: 'documentFile', label: 'Attach Python file to document', type: 'file' }
+                    ],
+                    tip: "This is a perfect, time-saving task to offload to an AI. It significantly improves your codebase's professionalism and usability."
+                }
+            ]
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const mainContent = document.getElementById('main-content');
+        const categoryNav = document.getElementById('category-nav');
+        const searchBar = document.getElementById('search-bar');
+        const addSectionBtn = document.getElementById('add-section-btn');
+
+        const renderApp = () => {
+            mainContent.innerHTML = '<p id="no-results" class="hidden text-center text-gray-500 mt-10">No prompts found matching your search.</p>';
+            categoryNav.innerHTML = '';
+
+            Object.keys(promptsData).forEach((categoryKey, categoryIndex) => {
+                const categoryData = promptsData[categoryKey];
+                
+                // Render Nav Item
+                const navItem = document.createElement('li');
+                navItem.innerHTML = `<a href="#${categoryKey}" class="text-gray-600 hover:text-blue-700 font-medium transition flex justify-between items-center group"><span>${categoryData.name}</span></a>`;
+                categoryNav.appendChild(navItem);
+                
+                // Render Section
+                const categorySection = document.createElement('div');
+                categorySection.id = categoryKey;
+                categorySection.className = 'prompt-category pt-10';
+                categorySection.innerHTML = `
+                    <h2 data-category-key="${categoryKey}">
+                        <span contenteditable="true" class="category-title">${categoryData.name}</span>
+                        <span class="flex items-center gap-2">
+                             <button class="control-btn move-up-section" title="Move section up">↑</button>
+                             <button class="control-btn move-down-section" title="Move section down">↓</button>
+                        </span>
+                    </h2>
+                `;
+
+                categoryData.prompts.forEach((p, promptIndex) => {
+                    categorySection.appendChild(renderPrompt(p, categoryKey, promptIndex));
+                });
+                
+                const addPromptButton = document.createElement('button');
+                addPromptButton.className = 'add-prompt-btn mt-4 action-button bg-blue-100 text-blue-800 hover:bg-blue-200';
+                addPromptButton.dataset.categoryKey = categoryKey;
+                addPromptButton.innerHTML = `<span class="text-xl font-bold">+</span> Add Prompt to this Section`;
+                categorySection.appendChild(addPromptButton);
+
+                mainContent.appendChild(categorySection);
+            });
+        };
+
+        const renderPrompt = (promptData, categoryKey, promptIndex) => {
+            const card = document.createElement('div');
+            card.className = 'prompt-card';
+            card.dataset.promptIndex = promptIndex;
+            card.dataset.categoryKey = categoryKey;
+
+            let inputsHTML = '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+            promptData.inputs.forEach(input => {
+                const inputId = `${categoryKey}-${promptIndex}-${input.id}`;
+                 if (input.type === 'textarea') {
+                    inputsHTML += `<div class="md:col-span-2"><label for="${inputId}" class="block font-semibold text-gray-700 mb-2">${input.label}</label><textarea id="${inputId}" placeholder="${input.placeholder}" class="w-full p-2 border border-gray-300 rounded-lg h-24"></textarea></div>`;
+                } else if (input.type === 'select') {
+                     let optionsHTML = '';
+                     input.options.forEach(opt => optionsHTML += `<option value="${opt}">${opt}</option>`);
+                     inputsHTML += `<div><label for="${inputId}" class="block font-semibold text-gray-700 mb-2">${input.label}</label><select id="${inputId}" class="w-full p-2.5 border border-gray-300 rounded-lg">${optionsHTML}</select></div>`;
+                } else if (input.type === 'file') {
+                    inputsHTML += `<div class="md:col-span-2"><label for="${inputId}" class="block font-semibold text-gray-700 mb-2">${input.label}</label><input type="file" id="${inputId}" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"/></div>`;
+                } else {
+                    inputsHTML += `<div><label for="${inputId}" class="block font-semibold text-gray-700 mb-2">${input.label}</label><input type="text" id="${inputId}" placeholder="${input.placeholder}" class="w-full p-2 border border-gray-300 rounded-lg"></div>`;
+                }
+            });
+            inputsHTML += '</div>';
+
+            const fullBasePrompt = `${masterInstruction}\n\n---\n\n${promptData.basePrompt}`;
+
+            card.innerHTML = `
+                <div class="prompt-header">
+                    <span class="prompt-title" contenteditable="true">${promptData.title}</span>
+                    <span class="flex items-center gap-2">
+                        <button class="control-btn move-up-prompt" title="Move prompt up">↑</button>
+                        <button class="control-btn move-down-prompt" title="Move prompt down">↓</button>
+                        <svg class="chevron w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </span>
+                </div>
+                <div class="prompt-content">
+                    <div class="input-group">
+                        <h4 class="text-lg font-bold text-gray-700 mb-4">1. Provide Context & Details</h4>
+                        ${inputsHTML}
+                    </div>
+                    <div class="input-group mt-6">
+                         <h4 class="text-lg font-bold text-gray-700 mb-4">2. Refine & Use Prompt</h4>
+                         <p class="text-sm text-gray-500 mb-2">Edit the prompt below or regenerate it with your details using the AI.</p>
+                        <div class="prompt-code-container">
+                            <button class="copy-btn">Copy</button>
+                            <textarea>${fullBasePrompt}</textarea>
+                        </div>
+                    </div>
+                    <div class="mt-6 flex items-center gap-4">
+                         <button class="action-button btn-primary regenerate-btn">
+                            ✨ Regenerate with Gemini
+                        </button>
+                         <div class="loading-spinner hidden"></div>
+                    </div>
+                    <div class="pro-tip" contenteditable="true">
+                        <strong>Expert Tip:</strong> ${promptData.tip}
+                    </div>
+                </div>
+            `;
+            return card;
+        };
+        
+        // --- Event Delegation ---
+        mainContent.addEventListener('click', async (e) => {
+            const target = e.target;
+            const promptCard = target.closest('.prompt-card');
+            const categorySection = target.closest('.prompt-category');
+
+            // Toggle prompt content
+            if (target.closest('.prompt-header')) {
+                const content = promptCard.querySelector('.prompt-content');
+                promptCard.classList.toggle('open');
+                content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            }
+            
+            // Copy button
+            if (target.classList.contains('copy-btn')) {
+                const textarea = target.nextElementSibling;
+                navigator.clipboard.writeText(textarea.value).then(() => {
+                    target.textContent = 'Copied!';
+                    setTimeout(() => { target.textContent = 'Copy'; }, 2000);
+                });
+            }
+            
+            // Add prompt button
+            if(target.classList.contains('add-prompt-btn')) {
+                const categoryKey = target.dataset.categoryKey;
+                promptsData[categoryKey].prompts.push({
+                    title: "New Custom Prompt",
+                    basePrompt: "Enter your base prompt here...",
+                    inputs: [],
+                    tip: "Add a helpful tip for this new prompt."
+                });
+                renderApp();
+            }
+
+            // Move prompt up/down
+            if (target.classList.contains('move-up-prompt') || target.classList.contains('move-down-prompt')) {
+                const categoryKey = promptCard.dataset.categoryKey;
+                const index = parseInt(promptCard.dataset.promptIndex);
+                const prompts = promptsData[categoryKey].prompts;
+                const direction = target.classList.contains('move-up-prompt') ? -1 : 1;
+                const newIndex = index + direction;
+
+                if (newIndex >= 0 && newIndex < prompts.length) {
+                    [prompts[index], prompts[newIndex]] = [prompts[newIndex], prompts[index]]; // Swap
+                    renderApp();
+                }
+            }
+            
+             // Move section up/down
+            if (target.classList.contains('move-up-section') || target.classList.contains('move-down-section')) {
+                const categoryKey = categorySection.querySelector('h2').dataset.categoryKey;
+                const keys = Object.keys(promptsData);
+                const index = keys.indexOf(categoryKey);
+                const direction = target.classList.contains('move-up-section') ? -1 : 1;
+                const newIndex = index + direction;
+                
+                if (newIndex >= 0 && newIndex < keys.length) {
+                    const newPromptsData = {};
+                    const movedKey = keys.splice(index, 1)[0];
+                    keys.splice(newIndex, 0, movedKey);
+                    keys.forEach(key => {
+                        newPromptsData[key] = promptsData[key];
+                    });
+                    promptsData = newPromptsData;
+                    renderApp();
+                }
+            }
+
+            // Regenerate with Gemini
+            if (target.classList.contains('regenerate-btn')) {
+                const promptContent = target.closest('.prompt-content');
+                const textarea = promptContent.querySelector('textarea');
+                const loader = promptContent.querySelector('.loading-spinner');
+                
+                loader.classList.remove('hidden');
+                target.disabled = true;
+                target.classList.add('opacity-50', 'cursor-not-allowed');
+
+                let basePrompt = textarea.value.includes('---') ? textarea.value.split('---')[1].trim() : textarea.value;
+
+                const inputs = promptContent.querySelectorAll('input, textarea:not(.prompt-code-container textarea), select');
+                inputs.forEach(input => {
+                    const placeholder = `\\[${input.id.split('-').pop()}\\]`;
+                    const actionPastTense = input.value === 'Add' ? 'added' : 'removed';
+                    basePrompt = basePrompt.replace(new RegExp(placeholder, 'g'), input.value);
+                    basePrompt = basePrompt.replace(/\[actionPastTense\]/g, actionPastTense);
+                });
+
+                const fileInput = promptContent.querySelector('input[type="file"]');
+                let fileContext = "No file attached.";
+                if (fileInput && fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    fileContext = `\n\n**Attached File ('${file.name}') Context:**\n\`\`\`\n${await file.text()}\n\`\`\``;
+                }
+                basePrompt = basePrompt.replace(/\[attachedFileContext\]/g, fileContext);
+
+                const finalPromptForApi = `${masterInstruction}\n\n---\n\n${basePrompt}`;
+
+                // --- ACTUAL GEMINI API CALL ---
+                const apiKey = ""; // <-- IMPORTANT: PASTE YOUR GEMINI API KEY HERE
+                if (!apiKey) {
+                    textarea.value = `// ERROR: Gemini API Key is missing. Please add it to the script.`;
+                    loader.classList.add('hidden');
+                    target.disabled = false;
+                    target.classList.remove('opacity-50', 'cursor-not-allowed');
+                    alert("Gemini API key is missing in the script.");
+                    return;
+                }
+
+                const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`;
+
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: [{ parts: [{ text: finalPromptForApi }] }] })
+                    });
+                    
+                    if (!response.ok) throw new Error(`API Error ${response.status}: ${response.statusText}`);
+
+                    const result = await response.json();
+                    
+                    if (result.candidates && result.candidates.length > 0) {
+                        textarea.value = result.candidates[0].content.parts[0].text;
+                    } else {
+                        throw new Error("No valid response from AI. The API might be restricted or the prompt was blocked.");
+                    }
+                } catch (error) {
+                    console.error("Gemini API Error:", error);
+                    textarea.value = `// ERROR: Could not regenerate prompt.\n// Details: ${error.message}`;
+                } finally {
+                    loader.classList.add('hidden');
+                    target.disabled = false;
+                    target.classList.remove('opacity-50', 'cursor-not-allowed');
+                }
+            }
+        });
+        
+        // Handle editable titles
+        mainContent.addEventListener('input', (e) => {
+            const target = e.target;
+            if (target.classList.contains('category-title')) {
+                const categoryKey = target.closest('h2').dataset.categoryKey;
+                promptsData[categoryKey].name = target.textContent;
+            } else if (target.classList.contains('prompt-title')) {
+                const promptCard = target.closest('.prompt-card');
+                const categoryKey = promptCard.dataset.categoryKey;
+                const index = parseInt(promptCard.dataset.promptIndex);
+                promptsData[categoryKey].prompts[index].title = target.textContent;
+            } else if (target.closest('.pro-tip')) {
+                const promptCard = target.closest('.prompt-card');
+                const categoryKey = promptCard.dataset.categoryKey;
+                const index = parseInt(promptCard.dataset.promptIndex);
+                promptsData[categoryKey].prompts[index].tip = target.innerHTML.replace('<strong>Expert Tip:</strong> ', '');
+            }
+        });
+        
+        // Search functionality
+        searchBar.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            let resultsFound = false;
+            document.querySelectorAll('.prompt-category').forEach(section => {
+                let sectionVisible = false;
+                section.querySelectorAll('.prompt-card').forEach(card => {
+                    const title = card.querySelector('.prompt-title').textContent.toLowerCase();
+                    const promptText = card.querySelector('textarea').value.toLowerCase();
+                    if (title.includes(searchTerm) || promptText.includes(searchTerm)) {
+                        card.classList.remove('hidden');
+                        sectionVisible = true;
+                        resultsFound = true;
+                    } else {
+                        card.classList.add('hidden');
+                    }
+                });
+                if(sectionVisible) {
+                    section.classList.remove('hidden');
+                } else {
+                     section.classList.add('hidden');
+                }
+            });
+            document.getElementById('no-results').style.display = resultsFound ? 'none' : 'block';
+        });
+
+        // Add new section
+        addSectionBtn.addEventListener('click', () => {
+            const newSectionName = prompt("Enter the name for the new section:", "New Custom Section");
+            if (newSectionName) {
+                const newKey = newSectionName.toLowerCase().replace(/\s+/g, '-') + '-' + Date.now();
+                promptsData[newKey] = {
+                    name: newSectionName,
+                    prompts: []
+                };
+                renderApp();
+                 document.getElementById(newKey).scrollIntoView({ behavior: 'smooth' });
+            }
+        });
+
+        // Initial render
+        renderApp();
+    });
+    </script>
+</body>
+</html>
